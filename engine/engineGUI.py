@@ -315,4 +315,3 @@ class EngineGUI:
         ttk.Button(buttons_panel, text="Apply Script", command=self.open_script_editor).pack(pady=5)
         ttk.Button(buttons_panel, text="Save Project", command=self.save_project).pack(pady=5)
         ttk.Button(buttons_panel, text="Load Project", command=self.load_project).pack(pady=5)
-s
