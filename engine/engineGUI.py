@@ -171,7 +171,6 @@ class EngineGUI:
         # Project settings
         self.project_settings = {
             "Color 1": "#FFFFFF",
-            #todo: add more colors
         }
         
         self.create_menu()
