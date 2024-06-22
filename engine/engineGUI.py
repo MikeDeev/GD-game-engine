@@ -1,49 +1,25 @@
 import tkinter as tk
-from tkinter import ttk, messagebox, filedialog, colorchooser
-from tkinter.scrolledtext import ScrolledText
-import shutil
-import os
-import uuid
+from tkinter import ttk, messagebox, filedialog, simpledialog
 import json
-from engine.compiler import compile_spwn
+import os
+import shutil
+import uuid
+from math import cos, sin, radians
+from tkinter import colorchooser
+
 
 class GameObject:
-    def __init__(self, obj_id, x=0, y=0, rotation=0, script="", color=None, groups=None):
+    def __init__(self, obj_id):
         self.obj_id = obj_id
-        self.x = x
-        self.y = y
-        self.rotation = rotation
-        self.script = script
-        self.color = color if color else "#FFFFFF"  # Default to white if not specified
-        self.groups = groups if groups else []
+        self.x = 0
+        self.y = 0
+        self.rotation = 0
+        self.color_id = None
+        self.groups = []
+        self.name = f"Object {obj_id}"
     
     def get_position(self):
         return self.x, self.y
-    
-    def set_position(self, x, y):
-        self.x = x
-        self.y = y
-    
-    def get_rotation(self):
-        return self.rotation
-    
-    def set_rotation(self, rotation):
-        self.rotation = rotation
-    
-    def to_dict(self):
-        return {
-            "obj_id": self.obj_id,
-            "x": self.x,
-            "y": self.y,
-            "rotation": self.rotation,
-            "script": self.script,
-            "color": self.color,
-            "groups": self.groups
-        }
-    
-    @staticmethod
-    def from_dict(data):
-        return GameObject(data["obj_id"], data["x"], data["y"], data["rotation"], data["script"], data.get("color"), data.get("groups", []))
 
 class Scene:
     def __init__(self, name):
@@ -53,40 +29,40 @@ class Scene:
     def to_dict(self):
         return {
             "name": self.name,
-            "objects": [obj.to_dict() for obj in self.objects]
+            "objects": [obj.__dict__ for obj in self.objects]
         }
     
-    @staticmethod
-    def from_dict(data):
-        scene = Scene(data["name"])
-        scene.objects = [GameObject.from_dict(obj_data) for obj_data in data["objects"]]
+    @classmethod
+    def from_dict(cls, data):
+        scene = cls(data["name"])
+        scene.objects = [GameObject(**obj_data) for obj_data in data["objects"]]
         return scene
 
 class ScriptEditorPopup:
-    def __init__(self, parent, initial_script, apply_callback):
+    def __init__(self, parent, script, apply_callback):
         self.parent = parent
+        self.script = script
         self.apply_callback = apply_callback
         
         self.popup = tk.Toplevel(parent)
         self.popup.title("Script Editor")
         
-        self.script_text = ScrolledText(self.popup, wrap=tk.WORD, width=30, height=10)
-        self.script_text.pack(expand=True, fill=tk.BOTH)
+        self.text_widget = tk.Text(self.popup, width=60, height=20)
+        self.text_widget.pack(padx=10, pady=10)
+        self.text_widget.insert(tk.END, script)
         
-        self.script_text.insert(tk.END, initial_script)  # Display previous script
-        
-        ttk.Button(self.popup, text="Apply Script", command=self.apply_script).pack(pady=5)
+        ttk.Button(self.popup, text="Apply", command=self.apply_changes).pack(pady=5)
     
-    def apply_script(self):
-        script = self.script_text.get(1.0, tk.END)
-        self.apply_callback(script)
+    def apply_changes(self):
+        self.script = self.text_widget.get("1.0", tk.END).strip()
+        self.apply_callback(self.script)
         self.popup.destroy()
 
 class ProjectSettingsPopup:
     def __init__(self, parent, project_settings, apply_callback):
         self.parent = parent
         self.apply_callback = apply_callback
-        self.project_settings = project_settings.copy()  # Create a copy to work with
+        self.project_settings = project_settings.copy() 
         
         self.popup = tk.Toplevel(parent)
         self.popup.title("Project Settings")
@@ -110,7 +86,6 @@ class ProjectSettingsPopup:
     def create_general_settings(self, frame):
         ttk.Label(frame, text="General Settings", font=('Helvetica', 12, 'bold')).pack(pady=10)
         
-        # Add general settings fields here if needed
         
     def create_color_settings(self, frame):
         ttk.Label(frame, text="Color Settings", font=('Helvetica', 12, 'bold')).pack(pady=10)
@@ -126,7 +101,6 @@ class ProjectSettingsPopup:
         
         ttk.Button(frame, text="Edit Color", command=self.edit_color).pack()
         
-        # Add initial colors (all white)
         self.color_ids = []
         for i in range(1000):
             color_id = f"Color {i + 1}"
@@ -159,56 +133,50 @@ class ProjectSettingsPopup:
 class EngineGUI:
     def __init__(self, root):
         self.root = root
-        self.root.title("Geometry Dash Game Engine")
-        
-        # icon_path = 'icon.ico'
-        # self.root.iconbitmap(icon_path)
+        self.root.title("Engine GUI")
+        self.root.geometry("800x600")
+        self.root.iconbitmap("icon.ico")
         
         self.scenes = []
         self.current_scene_index = -1
         self.selected_object_index = -1
-        
-        # Project settings
         self.project_settings = {
-            "Color 1": "#FFFFFF",
+            "Color1": "#FFFFFF"
         }
         
         self.create_menu()
-        self.create_toolbar()
         self.create_scene_panel()
-        self.create_canvas()
         self.create_object_panel()
         self.create_property_panel()
+        self.create_canvas()
+        
+        self.draw_scene()
     
     def create_menu(self):
         menubar = tk.Menu(self.root)
         
         file_menu = tk.Menu(menubar, tearoff=0)
+        file_menu.add_command(label="New Scene", command=self.new_scene)
+        file_menu.add_command(label="Delete Scene", command=self.delete_scene)
+        file_menu.add_separator()
         file_menu.add_command(label="Save Project", command=self.save_project)
         file_menu.add_command(label="Load Project", command=self.load_project)
         file_menu.add_separator()
         file_menu.add_command(label="Exit", command=self.root.quit)
-        menubar.add_cascade(label="File", menu=file_menu)
         
         project_menu = tk.Menu(menubar, tearoff=0)
         project_menu.add_command(label="Project Settings", command=self.open_project_settings)
+        
+        menubar.add_cascade(label="File", menu=file_menu)
         menubar.add_cascade(label="Project", menu=project_menu)
         
         self.root.config(menu=menubar)
-    
-    def create_toolbar(self):
-        toolbar = ttk.Frame(self.root)
-        toolbar.pack(side=tk.TOP, fill=tk.X)
-        
-        ttk.Button(toolbar, text="New Scene", command=self.new_scene).pack(side=tk.LEFT, padx=5, pady=5)
-        ttk.Button(toolbar, text="Delete Scene", command=self.delete_scene).pack(side=tk.LEFT, padx=5, pady=5)
-        ttk.Button(toolbar, text="Compile SPWN", command=self.compile_spwn).pack(side=tk.LEFT, padx=5, pady=5)
     
     def create_scene_panel(self):
         scene_panel = ttk.Frame(self.root)
         scene_panel.pack(side=tk.LEFT, fill=tk.Y)
         
-        ttk.Label(scene_panel, text="Scenes").pack(pady=5)
+        ttk.Label(scene_panel, text="Scenes", font=('Helvetica', 12, 'bold')).pack(pady=5)
         
         self.scene_listbox = tk.Listbox(scene_panel, selectmode=tk.SINGLE)
         self.scene_listbox.pack(expand=True, fill=tk.BOTH)
@@ -217,26 +185,26 @@ class EngineGUI:
         scrollbar = ttk.Scrollbar(scene_panel, orient=tk.VERTICAL, command=self.scene_listbox.yview)
         scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
         self.scene_listbox.config(yscrollcommand=scrollbar.set)
+        
+        ttk.Button(scene_panel, text="New Scene", command=self.new_scene).pack(pady=5)
     
     def create_object_panel(self):
         object_panel = ttk.Frame(self.root)
         object_panel.pack(side=tk.RIGHT, fill=tk.Y)
         
-        ttk.Label(object_panel, text="Objects").pack(pady=5)
+        ttk.Label(object_panel, text="Objects", font=('Helvetica', 12, 'bold')).pack(pady=5)
         
         self.object_listbox = tk.Listbox(object_panel, selectmode=tk.SINGLE)
         self.object_listbox.pack(expand=True, fill=tk.BOTH)
         self.object_listbox.bind("<ButtonRelease-1>", self.select_object)
+        self.object_listbox.bind("<B1-Motion>", self.move_object)
         
         scrollbar = ttk.Scrollbar(object_panel, orient=tk.VERTICAL, command=self.object_listbox.yview)
         scrollbar.pack(side=tk.RIGHT, fill=tk.Y)
         self.object_listbox.config(yscrollcommand=scrollbar.set)
         
         ttk.Button(object_panel, text="Add Object", command=self.add_object).pack(pady=5)
-        
-        ttk.Label(object_panel, text="Script Editor", font=('Helvetica', 12, 'bold')).pack(pady=5)
-        self.script_editor_button = ttk.Button(object_panel, text="Edit Script", state=tk.DISABLED, command=self.open_script_editor)
-        self.script_editor_button.pack(pady=5)
+        ttk.Button(object_panel, text="Rename Object", command=self.rename_object).pack(pady=5)
     
     def create_property_panel(self):
         property_panel = ttk.Frame(self.root)
@@ -244,131 +212,175 @@ class EngineGUI:
         
         ttk.Label(property_panel, text="Properties", font=('Helvetica', 12, 'bold')).pack(pady=5)
         
-        self.property_text = ScrolledText(property_panel, wrap=tk.WORD, width=30, height=10)
-        self.property_text.pack(expand=True, fill=tk.BOTH)
-    
-    def update_object_listbox(self):
-        self.object_listbox.delete(0, tk.END)
-        if self.current_scene_index != -1:
-            scene = self.scenes[self.current_scene_index]
-            for obj in scene.objects:
-                self.object_listbox.insert(tk.END, f"Object {obj.obj_id}")
-    
-    def clear_object_listbox(self):
-        self.object_listbox.delete(0, tk.END)
-    
-    def update_properties_text(self):
+        self.property_frame = ttk.Frame(property_panel)
+        self.property_frame.pack(expand=True, fill=tk.BOTH)
+        
+    def update_property_panel(self):
+        for widget in self.property_frame.winfo_children():
+            widget.destroy()
+        
         if self.selected_object_index != -1 and self.current_scene_index != -1:
             obj = self.scenes[self.current_scene_index].objects[self.selected_object_index]
-            self.property_text.delete(1.0, tk.END)
-            self.property_text.insert(tk.END, f"Position: {obj.x}, {obj.y}\n")
-            self.property_text.insert(tk.END, f"Rotation: {obj.rotation}\n")
-            self.property_text.insert(tk.END, f"Script:\n{obj.script}")
-    
-    def clear_property_text(self):
-        self.property_text.delete(1.0, tk.END)
-    
-    def save_project(self):
-        filename = filedialog.asksaveasfilename(defaultextension=".json", filetypes=[("JSON Files", "*.json")])
-        if filename:
-            data = {
-                "scenes": [scene.to_dict() for scene in self.scenes],
-                "project_settings": self.project_settings
-            }
-            with open(filename, 'w') as file:
-                json.dump(data, file, indent=4)
-            messagebox.showinfo("Save Project", "Project saved successfully.")
-    
-    def load_project(self):
-        filename = filedialog.askopenfilename(filetypes=[("JSON Files", "*.json")])
-        if filename:
-            self.scenes.clear()
-            self.scene_listbox.delete(0, tk.END)
-            with open(filename, 'r') as file:
-                data = json.load(file)
-                for scene_data in data["scenes"]:
-                    scene = Scene.from_dict(scene_data)
-                    self.scenes.append(scene)
-                    self.scene_listbox.insert(tk.END, scene.name)
-                if "project_settings" in data:
-                    self.project_settings = data["project_settings"]
-            messagebox.showinfo("Load Project", "Project loaded successfully.")
-            self.clear_object_listbox()
-            self.clear_property_text()
-            self.draw_scene()
-    
-    def compile_spwn(self):
-        if self.scenes:
-            temp_dir = os.path.join("/tmp", str(uuid.uuid4()))
-            os.makedirs(temp_dir, exist_ok=True)
             
-            # Copy utils files
-            utils_dir = os.path.join(os.path.dirname(__file__), "utils")
-            for filename in os.listdir(utils_dir):
-                shutil.copy(os.path.join(utils_dir, filename), temp_dir)
+            ttk.Label(self.property_frame, text="Name:").grid(row=0, column=0, sticky=tk.W, padx=5)
+            self.name_entry = ttk.Entry(self.property_frame)
+            self.name_entry.grid(row=0, column=1, padx=5)
+            self.name_entry.insert(0, obj.name)
+            self.name_entry.bind("<Return>", self.update_object_name)
             
-            filename = os.path.join(temp_dir, "compiled.spwn")
-            compile_spwn(self.scenes, filename)
+            ttk.Label(self.property_frame, text="Position:").grid(row=1, column=0, sticky=tk.W, padx=5)
+            self.position_x_entry = ttk.Entry(self.property_frame, width=5)
+            self.position_x_entry.grid(row=1, column=1, padx=5)
+            self.position_x_entry.insert(0, obj.x)
+            self.position_x_entry.bind("<Return>", self.update_object_position)
+            self.position_y_entry = ttk.Entry(self.property_frame, width=5)
+            self.position_y_entry.grid(row=1, column=2, padx=5)
+            self.position_y_entry.insert(0, obj.y)
+            self.position_y_entry.bind("<Return>", self.update_object_position)
             
-            messagebox.showinfo("Compile SPWN", f"SPWN file compiled successfully. Saved in temporary directory: {temp_dir}")
-        else:
-            messagebox.showwarning("Compile SPWN", "No scenes to compile.")
+            ttk.Label(self.property_frame, text="Rotation:").grid(row=2, column=0, sticky=tk.W, padx=5)
+            self.rotation_entry = ttk.Entry(self.property_frame, width=10)
+            self.rotation_entry.grid(row=2, column=1, columnspan=2, padx=5)
+            self.rotation_entry.insert(0, obj.rotation)
+            self.rotation_entry.bind("<Return>", self.update_object_rotation)
+            
+            ttk.Label(self.property_frame, text="Color:").grid(row=3, column=0, sticky=tk.W, padx=5)
+            self.color_var = tk.StringVar()
+            self.color_var.set(obj.color_id if obj.color_id else "")
+            self.color_optionmenu = ttk.OptionMenu(self.property_frame, self.color_var, *list(self.project_settings.keys()))
+            self.color_optionmenu.grid(row=3, column=1, columnspan=2, padx=5)
+            ttk.Button(self.property_frame, text="Apply Color", command=self.apply_object_color).grid(row=3, column=3, padx=5)
+            
+            ttk.Label(self.property_frame, text="Groups:").grid(row=4, column=0, sticky=tk.W, padx=5)
+            self.groups_text = tk.Text(self.property_frame, height=4, width=20)
+            self.groups_text.grid(row=4, column=1, columnspan=2, padx=5)
+            self.groups_text.insert(tk.END, "\n".join(obj.groups))
+            self.groups_text.bind("<Return>", self.update_object_groups)
+            
+            ttk.Button(self.property_frame, text="Add Group", command=self.add_group).grid(row=5, column=1, padx=5, pady=5)
+            ttk.Button(self.property_frame, text="Remove Group", command=self.remove_group).grid(row=5, column=2, padx=5, pady=5)
     
-    def add_object(self):
-        if self.current_scene_index != -1:
-            obj_id = len(self.scenes[self.current_scene_index].objects) + 1
-            new_object = GameObject(obj_id)
-            self.scenes[self.current_scene_index].objects.append(new_object)
-            self.update_object_listbox()
-            self.draw_scene()
+    def update_object_name(self, event):
+        if self.selected_object_index != -1 and self.current_scene_index != -1:
+            new_name = self.name_entry.get().strip()
+            if new_name:
+                self.scenes[self.current_scene_index].objects[self.selected_object_index].name = new_name
+                self.update_object_listbox()
+    
+    def update_object_position(self, event):
+        if self.selected_object_index != -1 and self.current_scene_index != -1:
+            try:
+                new_x = float(self.position_x_entry.get())
+                new_y = float(self.position_y_entry.get())
+                self.scenes[self.current_scene_index].objects[self.selected_object_index].x = new_x
+                self.scenes[self.current_scene_index].objects[self.selected_object_index].y = new_y
+                self.draw_scene()
+            except ValueError:
+                pass
+    
+    def update_object_rotation(self, event):
+        if self.selected_object_index != -1 and self.current_scene_index != -1:
+            try:
+                new_rotation = float(self.rotation_entry.get())
+                self.scenes[self.current_scene_index].objects[self.selected_object_index].rotation = new_rotation
+                self.draw_scene()
+            except ValueError:
+                pass
+    
+    def apply_object_color(self):
+        if self.selected_object_index != -1 and self.current_scene_index != -1:
+            color_id = self.color_var.get()
+            if color_id in self.project_settings:
+                self.scenes[self.current_scene_index].objects[self.selected_object_index].color_id = color_id
+                self.draw_scene()
+    
+    def update_object_groups(self, event):
+        if self.selected_object_index != -1 and self.current_scene_index != -1:
+            groups_text = self.groups_text.get("1.0", tk.END).strip()
+            groups = [group.strip() for group in groups_text.split("\n") if group.strip()]
+            self.scenes[self.current_scene_index].objects[self.selected_object_index].groups = groups
+    
+    def add_group(self):
+        if self.selected_object_index != -1 and self.current_scene_index != -1:
+            new_group = simpledialog.askstring("Add Group", "Enter group name:")
+            if new_group:
+                self.scenes[self.current_scene_index].objects[self.selected_object_index].groups.append(new_group)
+                self.update_properties_text()
+    
+    def remove_group(self):
+        if self.selected_object_index != -1 and self.current_scene_index != -1:
+            selected_text = self.groups_text.tag_ranges(tk.SEL)
+            if selected_text:
+                start = int(selected_text[0])
+                end = int(selected_text[1])
+                self.groups_text.delete(start, end)
+                self.update_properties_text()
     
     def new_scene(self):
-        scene_name = f"Scene {len(self.scenes) + 1}"
-        self.scenes.append(Scene(scene_name))
-        self.scene_listbox.insert(tk.END, scene_name)
-        self.clear_object_listbox()
-        self.clear_property_text()
+        scene_name = simpledialog.askstring("New Scene", "Enter scene name:")
+        if scene_name:
+            self.scenes.append(Scene(scene_name))
+            self.update_scene_listbox()
+            self.update_object_listbox()
     
     def delete_scene(self):
         if self.current_scene_index != -1:
             del self.scenes[self.current_scene_index]
-            self.scene_listbox.delete(self.current_scene_index)
             self.current_scene_index = -1
-            self.clear_object_listbox()
-            self.clear_property_text()
+            self.update_scene_listbox()
+            self.update_object_listbox()
             self.draw_scene()
     
-    def open_script_editor(self):
+    def rename_object(self):
+        if self.selected_object_index != -1 and self.current_scene_index != -1:
+            new_name = simpledialog.askstring("Rename Object", "Enter new object name:")
+            if new_name:
+                self.scenes[self.current_scene_index].objects[self.selected_object_index].name = new_name
+                self.update_object_listbox()
+                self.draw_scene()
+    
+    def move_object(self, event):
         if self.selected_object_index != -1 and self.current_scene_index != -1:
             obj = self.scenes[self.current_scene_index].objects[self.selected_object_index]
-            editor = ScriptEditorPopup(self.root, obj.script, self.apply_script_editor)
-    
-    def apply_script_editor(self, script):
-        if self.selected_object_index != -1 and self.current_scene_index != -1:
-            self.scenes[self.current_scene_index].objects[self.selected_object_index].script = script
-            self.update_properties_text()
+            x = event.x
+            y = event.y
+            obj.x = x
+            obj.y = y
+            self.draw_scene()
     
     def open_project_settings(self):
-        settings_popup = ProjectSettingsPopup(self.root, self.project_settings, self.apply_project_settings)
+        ProjectSettingsPopup(self.root, self.project_settings, self.apply_project_settings)
     
     def apply_project_settings(self, settings):
         self.project_settings = settings
     
     def select_scene(self, event):
-        selected_index = self.scene_listbox.curselection()
-        if selected_index:
-            self.current_scene_index = selected_index[0]
-            self.clear_object_listbox()
+        selection = self.scene_listbox.curselection()
+        if selection:
+            self.current_scene_index = selection[0]
             self.update_object_listbox()
+            self.clear_property_text()
+            self.draw_scene()
+        else:
+            self.current_scene_index = -1
+            self.clear_object_listbox()
             self.clear_property_text()
             self.draw_scene()
     
     def select_object(self, event):
-        selected_index = self.object_listbox.curselection()
-        if selected_index:
-            self.selected_object_index = selected_index[0]
+        selection = self.object_listbox.curselection()
+        if selection:
+            self.selected_object_index = selection[0]
             self.update_properties_text()
-            self.script_editor_button.config(state=tk.NORMAL)  # Enable script editor button
+        else:
+            self.selected_object_index = -1
+            self.clear_property_text()
+    
+    def create_canvas(self):
+        self.canvas = tk.Canvas(self.root, bg="#333333")
+        self.canvas.pack(expand=True, fill=tk.BOTH)
+        self.canvas.bind("<Button-1>", self.select_object)
+        self.canvas.bind("<B1-Motion>", self.move_object)
     
     def draw_scene(self):
         self.canvas.delete("all")
@@ -376,35 +388,63 @@ class EngineGUI:
             scene = self.scenes[self.current_scene_index]
             for obj in scene.objects:
                 x, y = obj.get_position()
-                self.canvas.create_rectangle(x - 10, y - 10, x + 10, y + 10, fill=obj.color, tags="object")
+                self.canvas.create_rectangle(x - 10, y - 10, x + 10, y + 10, fill=self.project_settings.get(obj.color_id, "#FFFFFF"))
+                self.canvas.create_text(x, y, text=str(obj.name), fill="#000000")
+                if obj.rotation != 0:
+                    self.canvas.create_line(x, y, x + 20 * cos(radians(obj.rotation)), y + 20 * sin(radians(obj.rotation)), fill="#FF0000")
     
-    def create_canvas(self):
-        self.canvas = tk.Canvas(self.root, width=400, height=400, bg="white")
-        self.canvas.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
-        self.canvas.bind("<Button-1>", self.on_canvas_click)
-        self.canvas.bind("<B1-Motion>", self.on_canvas_drag)
+    def update_scene_listbox(self):
+        self.scene_listbox.delete(0, tk.END)
+        for scene in self.scenes:
+            self.scene_listbox.insert(tk.END, scene.name)
     
-    def on_canvas_click(self, event):
+    def update_object_listbox(self):
+        self.object_listbox.delete(0, tk.END)
         if self.current_scene_index != -1:
-            x, y = event.x, event.y
             scene = self.scenes[self.current_scene_index]
-            for i, obj in enumerate(scene.objects):
-                obj_x, obj_y = obj.get_position()
-                if abs(x - obj_x) <= 10 and abs(y - obj_y) <= 10:
-                    self.selected_object_index = i
-                    self.update_object_listbox()
-                    self.object_listbox.selection_set(i)
-                    self.select_object(None)
-                    break
+            for obj in scene.objects:
+                self.object_listbox.insert(tk.END, obj.name)
     
-    def on_canvas_drag(self, event):
-        if self.selected_object_index != -1 and self.current_scene_index != -1:
-            x, y = event.x, event.y
-            self.scenes[self.current_scene_index].objects[self.selected_object_index].set_position(x, y)
+    def clear_object_listbox(self):
+        self.object_listbox.delete(0, tk.END)
+    
+    def update_properties_text(self):
+        self.update_property_panel()
+    
+    def clear_property_text(self):
+        for widget in self.property_frame.winfo_children():
+            widget.destroy()
+    
+    def save_project(self):
+        filename = filedialog.asksaveasfilename(defaultextension=".json", filetypes=[("JSON files", "*.json")])
+        if filename:
+            data = {"scenes": [scene.to_dict() for scene in self.scenes]}
+            with open(filename, "w") as f:
+                json.dump(data, f, indent=4)
+    
+    def load_project(self):
+        filename = filedialog.askopenfilename(filetypes=[("JSON files", "*.json")])
+        if filename:
+            with open(filename, "r") as f:
+                data = json.load(f)
+                self.scenes = [Scene.from_dict(scene_data) for scene_data in data["scenes"]]
+                self.update_scene_listbox()
+                self.update_object_listbox()
+                self.draw_scene()
+    def add_object(self):
+        if self.current_scene_index != -1:
+            obj_id = 1
+            new_object = GameObject(obj_id)
+            self.scenes[self.current_scene_index].objects.append(new_object)
             self.update_object_listbox()
+            self.clear_property_text()
             self.draw_scene()
+
+    def run(self):
+        self.root.mainloop()
+
 
 if __name__ == "__main__":
     root = tk.Tk()
-    app = EngineGUI(root)
-    root.mainloop()
+    gui = EngineGUI(root)
+    gui.run()
