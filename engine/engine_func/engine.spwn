@@ -1,0 +1,23 @@
+///This is the engine functions so scripting is easier
+///Please DO NOT edit this if you dont know what are you doing
+
+extract obj_props;
+
+/*
+change_scene (scene){
+  //TODO: Make it change scene
+};
+
+pi () -> float {
+    return 3.14159265358979323846;
+};
+*/
+
+
+$.add(obj {
+  OBJ_ID: 211,
+  X: 0,
+  Y: 0
+})
+
+$.add("Made with Geometry Dash Game Engine".to_obj().with(X, (30 * 3) + 30 * 3).with(Y, 15).with(SCALING, 0.6));

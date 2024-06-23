@@ -3,15 +3,11 @@
 let constants = import "constants.spwn"
 
 
-import "heapq.spwn"
 import "zip.spwn"
-import "ordereddict.spwn"
 hashmap = import "hashmap.spwn"
 
 return {
-    heapq: @heapq::new,
     hashmap: @hashmap::new,
     hashmap_apply: hashmap.hashmap_apply,
     zip: @zip::new,
-    ordereddict: @ordereddict::new,
 }

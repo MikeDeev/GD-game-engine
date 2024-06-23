@@ -4,9 +4,10 @@ import json
 import os
 import shutil
 import uuid
+import engine.compiler as compile
 from math import cos, sin, radians
 from tkinter import colorchooser
-
+import random
 
 class GameObject:
     def __init__(self, obj_id):
@@ -17,6 +18,7 @@ class GameObject:
         self.color_id = None
         self.groups = []
         self.name = f"Object {obj_id}"
+        self.script = ""
     
     def get_position(self):
         return self.x, self.y
@@ -170,6 +172,8 @@ class EngineGUI:
         menubar.add_cascade(label="File", menu=file_menu)
         menubar.add_cascade(label="Project", menu=project_menu)
         
+        menubar.add_command(label="Compile Project", command=self.compile_project)
+
         self.root.config(menu=menubar)
     
     def create_scene_panel(self):
@@ -259,7 +263,18 @@ class EngineGUI:
             
             ttk.Button(self.property_frame, text="Add Group", command=self.add_group).grid(row=5, column=1, padx=5, pady=5)
             ttk.Button(self.property_frame, text="Remove Group", command=self.remove_group).grid(row=5, column=2, padx=5, pady=5)
+            
+            ttk.Button(self.property_frame, text="Edit Script", command=self.edit_script).grid(row=6, column=0, columnspan=3, padx=5, pady=5)
     
+    def edit_script(self):
+        if self.selected_object_index != -1 and self.current_scene_index != -1:
+            obj = self.scenes[self.current_scene_index].objects[self.selected_object_index]
+            ScriptEditorPopup(self.root, obj.script, self.apply_script_changes)
+
+    def apply_script_changes(self, script):
+        if self.selected_object_index != -1 and self.current_scene_index != -1:
+            self.scenes[self.current_scene_index].objects[self.selected_object_index].script = script
+
     def update_object_name(self, event):
         if self.selected_object_index != -1 and self.current_scene_index != -1:
             new_name = self.name_entry.get().strip()
@@ -439,7 +454,11 @@ class EngineGUI:
             self.update_object_listbox()
             self.clear_property_text()
             self.draw_scene()
-
+    def compile_project(self):
+        game_name = simpledialog.askstring("Compile", "Whats the name of the lvl in gd you want to replace with the compiled game?")
+        if game_name:
+            compile.compile_spwn(self.scenes,"PROJ_" + game_name + ".compiled.spwn",game_name)
+            
     def run(self):
         self.root.mainloop()
 
