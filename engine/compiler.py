@@ -64,7 +64,7 @@ let spwngen = import "spwngen.spwn";
                     X: {obj.x},
                     Y: {obj.y},
                     //rotation: {obj.rotation},
-                    COLOR: "{obj.color_id}",
+                    //COLOR: "{obj.color_id}",
                     GROUPS: {obj.groups if obj.groups else []}
                 }});
                 """
