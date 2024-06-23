@@ -3,20 +3,50 @@
 
 extract obj_props;
 /*
-change_scene (scene){
-  //TODO: Make it change scene
-};
+SETUP
 */
-pi () -> float {
+let EngineName = "Geometry Dash Game Engine";
+
+currentScene = counter(0);
+scenes = counter(0);
+
+/*
+FUNCTIONS
+*/
+
+create_text = (text,txt_x,txt_y){
+  $.add(obj {
+    OBJ_ID: 211,
+    X: 0,
+    Y: 0
+  });
+  
+  $.add(text.to_obj().with(X, txt_x).with(Y, txt_y).with(SCALING, 0.6));
+};
+
+countScene =  (){
+  scenes+=1;
+};
+
+change_scene = (sceneID){
+  score = sceneID;
+  groupModifying = 1g;
+  while i < scenes+1 {
+    groupModifying.alpha(0);
+    groupModifying += 1g;
+  i++
+  }
+  sceneGroup = 1g
+  while i < sceneID+1 {
+    sceneGroup += 1g;
+  i++;
+  }
+  sceneGroup.alpha(0);
+};
+
+pi = (){
     return 3.14159265358979323846;
 };
 
-
-
-$.add(obj {
-  OBJ_ID: 211,
-  X: 0,
-  Y: 0
-})
-
-$.add("Made with Geometry Dash Game Engine".to_obj().with(X, (30 * 3) + 30 * 3).with(Y, 15).with(SCALING, 0.6));
+create_text("Made with Geometry Dash Game Engine",0,-20);
+create_text("Github: github.com/MikeDeev/GD-game-engine",0,0);

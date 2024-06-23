@@ -43,14 +43,11 @@ def compile_spwn(scenes, filename, compiled_level_name):
 extract obj_props;
 //GENERATED WITH GEOMETRY DASH GAME ENGINE//
 let engineeVrsion = "1.0";
-let engineName = "GD game engine";
 
 //Libs
 import "collection.spwn";
-let spwngen = import "spwngen.spwn";
-let game = import "engine.spwn";
-//let xor = import "xor.spwn";
-
+spwngen = import "spwngen.spwn";
+game = import "engine.spwn";
         
         """
 
@@ -64,9 +61,9 @@ let game = import "engine.spwn";
                     OBJ_ID: {obj.obj_id},
                     X: {obj.x}+100,
                     Y: {obj.y}+100,
-                    //rotation: {obj.rotation},
+                    ROTATION: {obj.rotation},
                     //COLOR: "{obj.color_id}",
-                    GROUPS: {obj.groups if obj.groups else []}
+                    GROUPS: {group}g //{obj.groups if obj.groups else []}
                 }});
                 """
                 if obj.script:
@@ -74,7 +71,10 @@ let game = import "engine.spwn";
                     // Script for object {obj.obj_id}
                     {obj.script}
                     """
-            group += 1
+        spwn_code += """
+        game.countScene()
+        """
+        group += 1
 
         spwn_file_path = os.path.join(uid_folder, filename)
         with open(spwn_file_path, 'w') as file:
