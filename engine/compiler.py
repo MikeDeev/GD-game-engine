@@ -48,6 +48,7 @@ let engineName = "GD game engine";
 //Libs
 import "collection.spwn";
 let spwngen = import "spwngen.spwn";
+let game = import "engine.spwn";
 //let xor = import "xor.spwn";
 
         
@@ -61,8 +62,8 @@ let spwngen = import "spwngen.spwn";
                 spwn_code += f"""
                 $.add(obj{{
                     OBJ_ID: {obj.obj_id},
-                    X: {obj.x},
-                    Y: {obj.y},
+                    X: {obj.x}+100,
+                    Y: {obj.y}+100,
                     //rotation: {obj.rotation},
                     //COLOR: "{obj.color_id}",
                     GROUPS: {obj.groups if obj.groups else []}
