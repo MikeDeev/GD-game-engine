@@ -2,16 +2,15 @@
 ///Please DO NOT edit this if you dont know what are you doing
 
 extract obj_props;
-
 /*
 change_scene (scene){
   //TODO: Make it change scene
 };
-
+*/
 pi () -> float {
     return 3.14159265358979323846;
 };
-*/
+
 
 
 $.add(obj {
