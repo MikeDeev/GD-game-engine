@@ -7,8 +7,8 @@ SETUP
 */
 let EngineName = "Geometry Dash Game Engine";
 
-currentScene = counter(0);
-scenes = counter(0);
+let currentScene = 0;//counter(0);
+let scenes = 0;//counter(0);
 
 /*
 FUNCTIONS
@@ -24,29 +24,37 @@ create_text = (text,txt_x,txt_y){
   $.add(text.to_obj().with(X, txt_x).with(Y, txt_y).with(SCALING, 0.6));
 };
 
-countScene =  (){
-  scenes+=1;
+countScene = () {
+  scenes += 1;
 };
-
+/*
 change_scene = (sceneID){
   score = sceneID;
-  groupModifying = 1g;
+  let groupModifying = 800g;
+  let i = 0;
   while i < scenes+1 {
     groupModifying.alpha(0);
-    groupModifying += 1g;
+    groupModifying++;
   i++
   }
+  i = 1
   sceneGroup = 1g
   while i < sceneID+1 {
-    sceneGroup += 1g;
+    sceneGroup++;
   i++;
   }
   sceneGroup.alpha(0);
+  currentScene = sceneID
+};
+*/
+
+change_scene = (sceneID){
+
 };
 
 pi = (){
     return 3.14159265358979323846;
 };
 
-create_text("Made with Geometry Dash Game Engine",0,-20);
-create_text("Github: github.com/MikeDeev/GD-game-engine",0,0);
+create_text("Made with Geometry Dash Game Engine",0,60);
+create_text("Github: github.com/MikeDeev/GD-game-engine",0,40);

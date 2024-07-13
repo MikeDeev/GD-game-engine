@@ -9,35 +9,55 @@ from math import cos, sin, radians
 from tkinter import colorchooser
 import random
 
+scenesNumber = 0
+
 class GameObject:
-    def __init__(self, obj_id):
+    def __init__(self, obj_id, x=0, y=0, rotation=0, color_id=None, groups=None, name="", script=""):
         self.obj_id = obj_id
-        self.x = 0
-        self.y = 0
-        self.rotation = 0
-        self.color_id = None
-        self.groups = []
-        self.name = f"Object {obj_id}"
-        self.script = ""
+        self.x = x
+        self.y = y
+        self.rotation = rotation
+        self.color_id = color_id
+        self.groups = groups if groups is not None else []
+        self.name = name
+        self.script = script
     
     def get_position(self):
         return self.x, self.y
 
+
 class Scene:
     def __init__(self, name):
+        global scenesNumber
+        scenesNumber += 1
         self.name = name
+        self.sceneID = 800 + scenesNumber
         self.objects = []
+
     
     def to_dict(self):
         return {
             "name": self.name,
-            "objects": [obj.__dict__ for obj in self.objects]
+            "objects": [obj.__dict__ for obj in self.objects],
+            "id": self.sceneID
         }
     
     @classmethod
     def from_dict(cls, data):
         scene = cls(data["name"])
-        scene.objects = [GameObject(**obj_data) for obj_data in data["objects"]]
+        scene.objects = []
+        for obj_data in data["objects"]:
+            obj = GameObject(
+                obj_id=obj_data["obj_id"],
+                x=obj_data["x"],
+                y=obj_data["y"],
+                rotation=obj_data["rotation"],
+                color_id=obj_data["color_id"],
+                groups=obj_data["groups"],
+                name=obj_data["name"],
+                script=obj_data["script"]
+            )
+            scene.objects.append(obj)
         return scene
 
 class ScriptEditorPopup:
@@ -208,7 +228,7 @@ class EngineGUI:
         self.object_listbox.config(yscrollcommand=scrollbar.set)
         
         ttk.Button(object_panel, text="Add Object", command=self.add_object).pack(pady=5)
-        ttk.Button(object_panel, text="Rename Object", command=self.rename_object).pack(pady=5)
+        #ttk.Button(object_panel, text="Rename Object", command=self.rename_object).pack(pady=5)
     
     def create_property_panel(self):
         property_panel = ttk.Frame(self.root)
@@ -337,6 +357,7 @@ class EngineGUI:
             self.scenes.append(Scene(scene_name))
             self.update_scene_listbox()
             self.update_object_listbox()
+
     
     def delete_scene(self):
         if self.current_scene_index != -1:
@@ -433,7 +454,10 @@ class EngineGUI:
     def save_project(self):
         filename = filedialog.asksaveasfilename(defaultextension=".json", filetypes=[("JSON files", "*.json")])
         if filename:
-            data = {"scenes": [scene.to_dict() for scene in self.scenes]}
+            data = {
+                "scenesNumber": scenesNumber,
+                "scenes": [scene.to_dict() for scene in self.scenes]
+                }
             with open(filename, "w") as f:
                 json.dump(data, f, indent=4)
     
@@ -442,18 +466,23 @@ class EngineGUI:
         if filename:
             with open(filename, "r") as f:
                 data = json.load(f)
+                scenesNumber = data["scenesNumber"]
                 self.scenes = [Scene.from_dict(scene_data) for scene_data in data["scenes"]]
                 self.update_scene_listbox()
+                self.current_scene_index = -1
                 self.update_object_listbox()
+                self.clear_property_text()
                 self.draw_scene()
+
     def add_object(self):
         if self.current_scene_index != -1:
             obj_id = 1
-            new_object = GameObject(obj_id)
+            new_object = GameObject(obj_id,32,32,0,None,[],"object","")
             self.scenes[self.current_scene_index].objects.append(new_object)
             self.update_object_listbox()
             self.clear_property_text()
             self.draw_scene()
+
     def compile_project(self):
         game_name = simpledialog.askstring("Compile", "Whats the name of the lvl in gd you want to replace with the compiled game?")
         if game_name:
