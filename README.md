@@ -1,7 +1,9 @@
 # ⚠️STILL IN DEVELOPMENT!⚠️
+# I will take a break of making this, maybe I dont even finish it
+
 # Geometry Dash game engine
 
-This is an engine made for making games in geometry dash be easier.
+This is an engine made for making games in geometry dash.
 
 ⚠️THIS IS STILL IN ALPHA THERE'S A LOT OF BUGS AND ERRORS ⚠️
 
